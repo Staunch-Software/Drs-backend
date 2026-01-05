@@ -1,6 +1,5 @@
 import uuid
-from datetime import datetime
-from sqlalchemy import Column, String, Text, ForeignKey, DateTime, Boolean
+from sqlalchemy import Column, String, Text, ForeignKey, DateTime, Enum, Boolean, Integer
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
@@ -10,29 +9,63 @@ from app.models.enums import DefectPriority, DefectStatus
 class Defect(Base):
     __tablename__ = "defects"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(UUID(as_uuid=True), primary_key=True) 
     
-    # --- FIX IS HERE ---
-    # OLD (Error): ForeignKey("vessels.imo_number")
-    # NEW (Correct): ForeignKey("vessels.imo")
-    vessel_imo = Column(String(7), ForeignKey("vessels.imo", ondelete="CASCADE"), nullable=False, index=True)
+    vessel_imo = Column(String(7), ForeignKey("vessels.imo_number"), nullable=False, index=True)
+    reported_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     
-    # We also link to the User who reported it
-    reported_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
-
     title = Column(String, nullable=False)
-    equipment = Column(String, nullable=False) # e.g. "Main Engine"
-    description = Column(Text)
-    
-    # Enums are stored as Strings in the DB
-    priority = Column(String, default=DefectPriority.NORMAL, nullable=False)
-    status = Column(String, default=DefectStatus.OPEN, nullable=False)
-    
-    # Timestamps
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    closed_at = Column(DateTime, nullable=True)
+    equipment_name = Column(String, nullable=False)
+    description = Column(Text, nullable=False)
+    ships_remarks = Column(Text, nullable=True)
+    priority = Column(Enum(DefectPriority), default=DefectPriority.NORMAL, index=True)
+    status = Column(Enum(DefectStatus), default=DefectStatus.OPEN, index=True)
+    office_support_required = Column(Boolean, default=False)
+    pr_number = Column(String, nullable=True)
+    pr_status = Column(String, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    closed_at = Column(DateTime(timezone=True), nullable=True)
 
-    # Relationships (Optional but useful for API)
-    # vessel = relationship("Vessel", back_populates="defects") 
-    # reported_by = relationship("User", back_populates="reported_defects")
+    responsibility = Column(String, nullable=True)
+    json_backup_path = Column(String, nullable=True) # Link to Azure JSON
+    date_identified = Column(DateTime, nullable=True) # To store the 'date' from UI
+
+    # Relationships
+    vessel = relationship("Vessel", back_populates="defects")
+    reporter = relationship("User", back_populates="reported_defects")
+
+class Thread(Base):
+    __tablename__ = "threads"
+    id = Column(UUID(as_uuid=True), primary_key=True)
+    defect_id = Column(UUID(as_uuid=True), ForeignKey("defects.id"), nullable=False)
+    
+    # ADD THIS: Link to the actual user account
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    
+    # Keep this for the "Display Name" (e.g., "Chief Engineer")
+    author_role = Column(String, nullable=False) 
+    body = Column(Text, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Relationships
+    defect = relationship("Defect", backref="threads")
+    attachments = relationship("Attachment", back_populates="thread")
+
+class Attachment(Base):
+    __tablename__ = "attachments"
+
+    id = Column(UUID(as_uuid=True), primary_key=True) # Client-generated
+    thread_id = Column(UUID(as_uuid=True), ForeignKey("threads.id"), nullable=False)
+    
+    file_name = Column(String, nullable=False)
+    file_size = Column(Integer, nullable=True)
+    content_type = Column(String, nullable=True)
+    
+    # The path in Azure Blob Storage (Module 3)
+    blob_path = Column(String, nullable=False) 
+    
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Relationships
+    thread = relationship("Thread", back_populates="attachments")
