@@ -12,7 +12,7 @@ class Vessel(Base):
     imo = Column(String(7), primary_key=True, index=True)
     
     name = Column(String, nullable=False)     # e.g., "MT ALFA"
-    code = Column(String(3), index=True)      # e.g., "ALF" (Short code for UI)
+    # code = Column(String(3), index=True)      # e.g., "ALF" (Short code for UI)
     vessel_type = Column(String)              # e.g., "OIL_TANKER"
     email = Column(String, nullable=True)     # Ship's email address
     

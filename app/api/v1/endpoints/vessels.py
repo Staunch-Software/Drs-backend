@@ -23,9 +23,8 @@ async def read_vessels(db: AsyncSession = Depends(get_db)):
                 "imo_number": v.imo, 
                 "name": v.name,
                 "vessel_type": v.vessel_type,
-                "code": v.code,     # <--- Ensure this is mapped
+                # "code": v.code,     # <--- Ensure this is mapped
                 "email": v.email,   # <--- Ensure this is mapped
-                "flag": v.flag,
                 "is_active": v.is_active,
                 "created_at": v.created_at
             })
@@ -54,9 +53,9 @@ async def create_vessel(
             name=vessel_in.name,
             vessel_type=vessel_in.vessel_type,
             # CRITICAL: This is where we save the new fields
-            code=vessel_in.code,
+            # code=vessel_in.code,
             email=vessel_in.email,
-            flag=vessel_in.flag
+            # flag=vessel_in.flag
         )
 
         db.add(new_vessel)
@@ -67,9 +66,9 @@ async def create_vessel(
             "imo_number": new_vessel.imo,
             "name": new_vessel.name,
             "vessel_type": new_vessel.vessel_type,
-            "code": new_vessel.code,
+            # "code": new_vessel.code,
             "email": new_vessel.email,
-            "flag": new_vessel.flag,
+            # "flag": new_vessel.flag,
             "is_active": new_vessel.is_active,
             "created_at": new_vessel.created_at
         }

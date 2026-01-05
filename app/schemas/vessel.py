@@ -7,7 +7,7 @@ class VesselBase(BaseModel):
     vessel_type: str
     
     # code is now Optional (None by default)
-    code: Optional[str] = None 
+    # code: Optional[str] = None 
     email: Optional[str] = None
     flag: Optional[str] = None
 
