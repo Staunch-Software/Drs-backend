@@ -25,3 +25,5 @@ class Vessel(Base):
         secondary=user_vessel_link, 
         back_populates="vessels"
     )
+
+    defects = relationship("Defect", back_populates="vessel", cascade="all, delete-orphan")

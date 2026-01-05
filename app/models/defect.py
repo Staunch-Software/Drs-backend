@@ -2,7 +2,7 @@ import uuid
 from sqlalchemy import Column, String, Text, ForeignKey, DateTime, Enum, Boolean, Integer
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
-
+from sqlalchemy.sql import func
 from app.core.database import Base
 from app.models.enums import DefectPriority, DefectStatus
 
@@ -11,7 +11,7 @@ class Defect(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True) 
     
-    vessel_imo = Column(String(7), ForeignKey("vessels.imo_number"), nullable=False, index=True)
+    vessel_imo = Column(String(7), ForeignKey("vessels.imo", ondelete="CASCADE"), nullable=False, index=True)
     reported_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     
     title = Column(String, nullable=False)

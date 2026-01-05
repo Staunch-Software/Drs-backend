@@ -30,3 +30,5 @@ class User(Base):
         back_populates="users",
         lazy="selectin"  # HIGH EFFICIENCY: Loads vessels instantly when fetching user
     )
+
+    reported_defects = relationship("Defect", back_populates="reporter")

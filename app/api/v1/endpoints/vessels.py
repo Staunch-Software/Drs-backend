@@ -13,19 +13,21 @@ router = APIRouter()
 @router.get("/", response_model=List[VesselResponse])
 async def read_vessels(db: AsyncSession = Depends(get_db)):
     try:
-        # We need to map DB 'imo' to Pydantic 'imo_number' for the response
         result = await db.execute(select(Vessel))
         vessels = result.scalars().all()
         
-        # Manual mapping ensures response matches Pydantic Schema
+        # Map DB 'imo' to API 'imo_number'
         response_data = []
         for v in vessels:
             response_data.append({
-                "imo_number": v.imo, # <--- MAP DB 'imo' TO API 'imo_number'
+                "imo_number": v.imo, 
                 "name": v.name,
                 "vessel_type": v.vessel_type,
-                "flag": v.flag, # Ensure your Model has this column or remove it
-                "is_active": v.is_active
+                "code": v.code,     # <--- Ensure this is mapped
+                "email": v.email,   # <--- Ensure this is mapped
+                "flag": v.flag,
+                "is_active": v.is_active,
+                "created_at": v.created_at
             })
         return response_data
     except Exception as e:
@@ -39,7 +41,7 @@ async def create_vessel(
     db: AsyncSession = Depends(get_db)
 ):
     try:
-        # Check if exists (Using v.imo)
+        # Check duplicate
         result = await db.execute(select(Vessel).where(Vessel.imo == vessel_in.imo_number))
         if result.scalars().first():
             raise HTTPException(
@@ -48,22 +50,28 @@ async def create_vessel(
             )
 
         new_vessel = Vessel(
-            imo=vessel_in.imo_number, # <--- CRITICAL FIX: DB column is 'imo'
+            imo=vessel_in.imo_number, 
             name=vessel_in.name,
             vessel_type=vessel_in.vessel_type,
-            # flag=vessel_in.flag # Uncomment if you added 'flag' to models/vessel.py
+            # CRITICAL: This is where we save the new fields
+            code=vessel_in.code,
+            email=vessel_in.email,
+            flag=vessel_in.flag
         )
 
         db.add(new_vessel)
         await db.commit()
         await db.refresh(new_vessel)
         
-        # Return mapped object
         return {
             "imo_number": new_vessel.imo,
             "name": new_vessel.name,
             "vessel_type": new_vessel.vessel_type,
-            "is_active": new_vessel.is_active
+            "code": new_vessel.code,
+            "email": new_vessel.email,
+            "flag": new_vessel.flag,
+            "is_active": new_vessel.is_active,
+            "created_at": new_vessel.created_at
         }
         
     except Exception as e:
