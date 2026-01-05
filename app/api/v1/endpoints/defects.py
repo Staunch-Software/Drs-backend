@@ -16,7 +16,7 @@ from app.schemas.defect import (
 from app.core.blob_storage import generate_write_sas_url
 from app.api.deps import get_current_user 
 import datetime
-from azure.storage.blob import BlobServiceClient, generate_blob_sas, BlobSasPermissions
+# REMOVED: from app.api.v1.endpoints import defects (Circular)
 from app.core.config import settings
 
 router = APIRouter()
