@@ -23,6 +23,10 @@ class Settings(BaseSettings):
     POSTGRES_PORT: str = os.getenv("DB_PORT", "5432")
     POSTGRES_DB: str = os.getenv("DB_NAME", "Drs")
 
+    # --- AZURE STORAGE ---
+    AZURE_STORAGE_CONNECTION_STRING: str = os.getenv("AZURE_STORAGE_CONNECTION_STRING", "")
+    AZURE_CONTAINER_NAME: str = os.getenv("AZURE_CONTAINER_NAME", "pdf-repository")
+    
     @property
     def SQLALCHEMY_DATABASE_URI(self) -> str:
         """

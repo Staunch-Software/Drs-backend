@@ -19,3 +19,4 @@ python-multipart>=0.0.9  # Required for Login Form Data
 
 # --- Utilities ---
 email-validator>=2.1.0
+azure-storage-blob
