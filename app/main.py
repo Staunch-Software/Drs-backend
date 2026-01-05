@@ -19,6 +19,7 @@ origins = [
     "http://localhost:3000",  # Your Vite Frontend
     "http://localhost:5173",  # Alternate Vite Port
     "http://127.0.0.1:3000",
+    "http://127.0.0.1:5173",
 ]
 
 app.add_middleware(

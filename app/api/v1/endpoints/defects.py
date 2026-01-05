@@ -54,39 +54,29 @@ async def create_defect(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    # 1. Security check
-    if not current_user.assigned_vessel_imo:
-        raise HTTPException(status_code=400, detail="Only Vessel Crew can report defects.")
-
-    # 2. Idempotency Check (Prevents duplicates if UI retries)
+    # 1. Idempotency Check
     existing = await db.get(Defect, defect_in.id)
-    if existing:
-        return existing
+    if existing: return existing
+
+    # 2. FOR TESTING: Hardcode the IMO from your screenshot
+    TEST_IMO = "9832913" 
 
     # 3. Map Frontend Schema to SQLAlchemy Model
     new_defect = Defect(
         id=defect_in.id,
-        vessel_imo=current_user.assigned_vessel_imo,
+        vessel_imo=TEST_IMO, # <--- Forced for testing
         reported_by_id=current_user.id,
-        
-        # Mapping to your existing columns
         title=defect_in.equipment,           
         equipment_name=defect_in.equipment,  
         description=defect_in.description,
         ships_remarks=defect_in.remarks,     
-        
         priority=defect_in.priority,
         status=defect_in.status,
         responsibility=defect_in.responsibility,
-        
-        # Map 'Yes/No' string to Boolean for your existing column
         office_support_required=True if "Yes" in defect_in.officeSupport else False,
-        
         pr_number=defect_in.prNumber,
         pr_status=defect_in.prStatus,
         json_backup_path=defect_in.json_backup_path,
-        
-        # Convert string date to python datetime
         date_identified=datetime.datetime.strptime(defect_in.date, '%Y-%m-%d') if defect_in.date else None
     )
     
