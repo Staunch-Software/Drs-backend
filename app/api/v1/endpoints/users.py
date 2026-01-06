@@ -36,6 +36,7 @@ async def create_user(user_in: UserCreate, db: AsyncSession = Depends(get_db)):
         email=user_in.email,
         password_hash=get_password_hash(user_in.password), # <--- CRITICAL FIX: 'password_hash'
         full_name=user_in.full_name,
+        job_title=user_in.job_title,
         role=user_in.role,
         vessels=vessels_to_assign 
     )

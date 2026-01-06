@@ -6,7 +6,8 @@ from uuid import UUID
 class UserBase(BaseModel):
     email: EmailStr
     full_name: str
-    role: str = "CREW"
+    job_title: Optional[str] = None
+    role: str = "VESSEL"
     is_active: Optional[bool] = True
 
 # Properties to receive via API on creation

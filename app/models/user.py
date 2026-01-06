@@ -17,7 +17,7 @@ class User(Base):
     
     full_name = Column(String, nullable=False)
     job_title = Column(String)  # e.g. "Chief Engineer"
-    role = Column(String, default=UserRole.CREW, nullable=False)
+    role = Column(String, default=UserRole.VESSEL, nullable=False)
     
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
