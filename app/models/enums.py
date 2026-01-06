@@ -1,14 +1,10 @@
 import enum
 
-# --- USER ROLES ---
+# --- USER ROLES (SIMPLIFIED) ---
 class UserRole(str, enum.Enum):
-    CREW = "CREW"
-    MASTER = "MASTER"
-    CHIEF_ENGINEER = "CHIEF_ENGINEER"
-    SECOND_ENGINEER = "SECOND_ENGINEER"
-    SUPERINTENDENT = "SUPERINTENDENT"
-    FLEET_MANAGER = "FLEET_MANAGER"
-    ADMIN = "ADMIN"
+    ADMIN = "ADMIN"  # Can create users, delete ships
+    SHORE = "SHORE"   
+    VESSEL= "VESSEL"
 
 # --- VESSEL TYPES ---
 class VesselType(str, enum.Enum):
@@ -18,13 +14,14 @@ class VesselType(str, enum.Enum):
     LNG_CARRIER = "LNG_CARRIER"
     GENERAL_CARGO = "GENERAL_CARGO"
 
-# --- DEFECT PRIORITIES (The Missing Part) ---
+# --- DEFECT PRIORITIES ---
 class DefectPriority(str, enum.Enum):
     NORMAL = "NORMAL"
     HIGH = "HIGH"
+    MEDIUM = "MEDIUM"
     CRITICAL = "CRITICAL"
 
-# --- DEFECT STATUS (The Missing Part) ---
+# --- DEFECT STATUS ---
 class DefectStatus(str, enum.Enum):
     OPEN = "OPEN"
     IN_PROGRESS = "IN_PROGRESS"
