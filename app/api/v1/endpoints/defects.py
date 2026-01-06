@@ -1,4 +1,3 @@
-# app/api/v1/endpoints/defects.py
 from uuid import UUID
 import datetime
 from fastapi import APIRouter, Depends, HTTPException
@@ -21,33 +20,33 @@ from app.schemas.defect import (
 from app.core.blob_storage import generate_write_sas_url, generate_read_sas_url
 from app.api.deps import get_current_user 
 
-# redirect_slashes=False prevents the 307 Redirect that breaks CORS
-router = APIRouter(redirect_slashes=False)
+router = APIRouter()
 
 # --- GET ALL DEFECTS ---
 @router.get("/", response_model=list[DefectResponse])
 async def get_defects(
-    vessel_filter: str | None = None,
+    vessel_imo: str | None = None, # Matches frontend param
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     query = select(Defect)
 
-    # 1. Logic for Vessel Users (Filter by their assigned ships)
-    if current_user.role in [UserRole.CHIEF_ENGINEER, UserRole.MASTER, "VESSEL"]:
-        # Extract IMOs from the many-to-many relationship
-        # Note: Using .imo to match your PGAdmin screenshot
+    # 1. Logic for Vessel Crew (Can ONLY see their assigned ship)
+    if current_user.role == UserRole.VESSEL:
+        # Get their assigned IMOs
         user_vessel_imos = [v.imo for v in current_user.vessels]
         
         if user_vessel_imos:
             query = query.where(Defect.vessel_imo.in_(user_vessel_imos))
         else:
-            # FALLBACK FOR TESTING: Use the IMO from your screenshot
-            query = query.where(Defect.vessel_imo == "9832913")
+            # If crew has no ship, they see nothing
+            return []
     
-    # 2. Logic for Shore Users
-    elif vessel_filter:
-        query = query.where(Defect.vessel_imo == vessel_filter)
+    # 2. Logic for Shore/Admin (Can filter by specific ship via Dropdown)
+    elif vessel_imo:
+        query = query.where(Defect.vessel_imo == vessel_imo)
+    
+    # 3. If Shore/Admin and no filter selected -> Return ALL defects (Global View)
     
     result = await db.execute(query)
     return result.scalars().all()
@@ -68,15 +67,14 @@ async def create_defect(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    # 1. Idempotency Check
     existing = await db.get(Defect, defect_in.id)
     if existing:
         return existing
 
-    # 2. Extract IMO (Fallback to your screenshot IMO for testing)
+    # Assign to the first vessel the user belongs to (Safe default)
+    # Or use the specific vessel if passed from UI context
     user_vessel_imo = current_user.vessels[0].imo if current_user.vessels else "9832913"
 
-    # 3. Map Frontend Schema to SQLAlchemy Model
     new_defect = Defect(
         id=defect_in.id,
         vessel_imo=user_vessel_imo,
@@ -85,8 +83,8 @@ async def create_defect(
         equipment_name=defect_in.equipment,  
         description=defect_in.description,
         ships_remarks=defect_in.remarks,     
-        priority=defect_in.priority.upper(), # Ensure Uppercase for ENUM
-        status=defect_in.status.upper(),     # Ensure Uppercase for ENUM
+        priority=defect_in.priority.upper(),
+        status=defect_in.status.upper(),     
         responsibility=defect_in.responsibility,
         office_support_required=True if "Yes" in defect_in.officeSupport else False,
         pr_number=defect_in.prNumber,
@@ -107,14 +105,11 @@ async def create_thread(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    # 1. Idempotency Check
     existing = await db.get(Thread, thread_in.id)
     if existing:
-        # If it exists, load attachments so the response model doesn't crash
         res = await db.execute(select(Thread).where(Thread.id == thread_in.id).options(selectinload(Thread.attachments)))
         return res.scalars().first()
 
-    # 2. Create Thread
     new_thread = Thread(
         id=thread_in.id,
         defect_id=thread_in.defect_id,
@@ -125,12 +120,7 @@ async def create_thread(
     
     db.add(new_thread)
     await db.commit()
-    
-    # 3. THE CRITICAL FIX: 
-    # Do NOT use new_thread.attachments = []. 
-    # Use db.refresh to load the relationship asynchronously.
     await db.refresh(new_thread, attribute_names=["attachments"])
-    
     return new_thread
 
 # --- CREATE ATTACHMENT ---
@@ -158,13 +148,12 @@ async def create_attachment(
     await db.refresh(new_attachment)
     return new_attachment
 
-# --- GET THREADS (For Shore UI) ---
+# --- GET THREADS ---
 @router.get("/{defect_id}/threads", response_model=list[ThreadResponse])
 async def get_defect_threads(
     defect_id: UUID, 
     db: AsyncSession = Depends(get_db)
 ):
-    # Use selectinload to fetch attachments in one go
     query = select(Thread).where(Thread.defect_id == defect_id)\
             .options(selectinload(Thread.attachments))\
             .order_by(Thread.created_at.asc())
@@ -172,7 +161,6 @@ async def get_defect_threads(
     result = await db.execute(query)
     threads = result.scalars().all()
     
-    # Sign the links so the Shore UI can view them
     for thread in threads:
         for att in thread.attachments:
             att.blob_path = generate_read_sas_url(att.blob_path)
