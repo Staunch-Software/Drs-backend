@@ -1,5 +1,5 @@
-from pydantic import BaseModel
-from typing import Optional
+from pydantic import BaseModel, Field, ConfigDict
+from typing import Optional, List
 from datetime import datetime
 from uuid import UUID
 from app.models.enums import DefectPriority, DefectStatus
@@ -69,10 +69,14 @@ class ThreadCreate(BaseModel):
 class ThreadResponse(BaseModel):
     id: UUID
     defect_id: UUID
-    author: str
+    # Map 'author_role' from DB to 'author' in JSON
+    author: str = Field(validation_alias="author_role") 
     body: str
     created_at: datetime
-    attachments: list[AttachmentResponse] = []
+    attachments: List[AttachmentResponse] = []
     
-    class Config:
-        from_attributes = True
+    # Pydantic v2 configuration
+    model_config = ConfigDict(
+        from_attributes=True, 
+        populate_by_name=True
+    )
