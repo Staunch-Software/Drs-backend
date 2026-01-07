@@ -1,6 +1,7 @@
 from uuid import UUID
 import datetime
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi import BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload 
@@ -20,6 +21,7 @@ from app.schemas.defect import (
 )
 from app.core.blob_storage import generate_write_sas_url, generate_read_sas_url
 from app.api.deps import get_current_user 
+from app.services.email_service import send_defect_email 
 
 router = APIRouter(redirect_slashes=False)
 
@@ -69,6 +71,7 @@ async def get_upload_sas(
 @router.post("/", response_model=DefectResponse)
 async def create_defect(
     defect_in: DefectCreate,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -104,6 +107,18 @@ async def create_defect(
     db.add(new_defect)
     await db.commit()
     await db.refresh(new_defect)
+    email_data = {
+        "event_type": "CREATED",
+        "vessel_imo": new_defect.vessel_imo,
+        "title": new_defect.title,
+        "equipment_name": new_defect.equipment_name,
+        "priority": new_defect.priority,
+        "status": new_defect.status,
+        "description": new_defect.description
+    }
+
+    background_tasks.add_task(send_defect_notification, email_data, "CREATED")
+    
     return new_defect
 
 # --- CREATE THREAD ---

@@ -23,6 +23,14 @@ class Settings(BaseSettings):
     # --- AZURE STORAGE ---
     AZURE_STORAGE_CONNECTION_STRING: str = ""
     AZURE_CONTAINER_NAME: str = "pdf-repository"
+
+    # --- EMAIL ---
+    MAIL_USERNAME: str
+    MAIL_PASSWORD: str
+    MAIL_FROM: str
+    MAIL_PORT: int
+    MAIL_SERVER: str
+    MAIL_FROM_NAME: str = "Maritime DRS"
     
     @property
     def SQLALCHEMY_DATABASE_URI(self) -> str:
