@@ -49,6 +49,17 @@ class DefectResponse(BaseModel):
     class Config:
         from_attributes = True
 
+class DefectUpdate(BaseModel):
+    equipment: Optional[str] = None
+    description: Optional[str] = None
+    remarks: Optional[str] = None
+    priority: Optional[str] = None
+    status: Optional[str] = None
+    responsibility: Optional[str] = None
+    officeSupport: Optional[str] = None
+    prNumber: Optional[str] = None
+    prStatus: Optional[str] = None
+    
 class AttachmentBase(BaseModel):
     id: UUID
     thread_id: UUID
