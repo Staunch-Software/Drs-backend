@@ -195,3 +195,58 @@ async def get_vessel_users_for_defect(
     users = result.scalars().all()
     
     return [{"id": str(u.id), "name": u.full_name} for u in users]
+
+# --- UPDATE DEFECT ---
+@router.patch("/{defect_id}", response_model=DefectResponse)
+async def update_defect(
+    defect_id: UUID,
+    defect_in: DefectUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    defect = await db.get(Defect, defect_id)
+    if not defect: raise HTTPException(status_code=404, detail="Not found")
+    
+    # Update fields dynamically
+    update_data = defect_in.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        if field == "officeSupport":
+            defect.office_support_required = True if "Yes" in value else False
+        elif field == "remarks":
+            defect.ships_remarks = value
+        elif field == "equipment":
+            defect.equipment_name = value
+            defect.title = value
+        else:
+            setattr(defect, field, value)
+            
+    await db.commit()
+    await db.refresh(defect)
+    return defect
+
+# --- CLOSE DEFECT ---
+@router.patch("/{defect_id}/close", response_model=DefectResponse)
+async def close_defect(
+    defect_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    defect = await db.get(Defect, defect_id)
+    defect.status = DefectStatus.CLOSED
+    defect.closed_at = datetime.datetime.now()
+    defect.closed_by_id = current_user.id # Record who closed it
+    
+    await db.commit()
+    await db.refresh(defect)
+    return defect
+
+# --- REMOVE DEFECT (Soft Delete for Audit) ---
+@router.delete("/{defect_id}")
+async def remove_defect(
+    defect_id: UUID,
+    db: AsyncSession = Depends(get_db)
+):
+    defect = await db.get(Defect, defect_id)
+    defect.is_deleted = True # Keep in DB, but hide from UI
+    await db.commit()
+    return {"message": "Defect removed and archived"}

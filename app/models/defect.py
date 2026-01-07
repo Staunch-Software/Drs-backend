@@ -27,7 +27,9 @@ class Defect(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     closed_at = Column(DateTime(timezone=True), nullable=True)
-
+    closed_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    is_deleted = Column(Boolean, default=False, index=True)
+    
     responsibility = Column(String, nullable=True)
     json_backup_path = Column(String, nullable=True) # Link to Azure JSON
     date_identified = Column(DateTime, nullable=True) # To store the 'date' from UI
@@ -35,6 +37,7 @@ class Defect(Base):
     # Relationships
     vessel = relationship("Vessel", back_populates="defects")
     reporter = relationship("User", back_populates="reported_defects")
+    closed_by = relationship("User", foreign_keys=[closed_by_id])
 
 class Thread(Base):
     __tablename__ = "threads"
