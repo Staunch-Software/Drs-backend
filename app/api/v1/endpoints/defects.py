@@ -107,8 +107,8 @@ async def create_defect(
     db.add(new_defect)
     await db.commit()
     await db.refresh(new_defect)
+
     email_data = {
-        "event_type": "CREATED",
         "vessel_imo": new_defect.vessel_imo,
         "title": new_defect.title,
         "equipment_name": new_defect.equipment_name,
@@ -117,7 +117,7 @@ async def create_defect(
         "description": new_defect.description
     }
 
-    background_tasks.add_task(send_defect_notification, email_data, "CREATED")
+    background_tasks.add_task(send_defect_email, email_data)
     
     return new_defect
 
