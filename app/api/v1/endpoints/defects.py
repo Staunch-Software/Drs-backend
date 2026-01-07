@@ -9,6 +9,7 @@ from app.core.database import get_db
 from app.models.defect import Defect, Thread, Attachment
 from app.models.user import User
 from app.models.enums import UserRole
+from app.models.vessel import Vessel
 from app.schemas.defect import (
     DefectCreate, 
     DefectResponse, 
@@ -20,36 +21,40 @@ from app.schemas.defect import (
 from app.core.blob_storage import generate_write_sas_url, generate_read_sas_url
 from app.api.deps import get_current_user 
 
-router = APIRouter()
+router = APIRouter(redirect_slashes=False)
 
 # --- GET ALL DEFECTS ---
 @router.get("/", response_model=list[DefectResponse])
 async def get_defects(
-    vessel_imo: str | None = None, # Matches frontend param
+    vessel_imo: str | None = None,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    query = select(Defect)
+    # Load defects WITH vessel relationship
+    query = select(Defect).options(selectinload(Defect.vessel))
 
-    # 1. Logic for Vessel Crew (Can ONLY see their assigned ship)
+    # 1. If user is VESSEL role: Strictly filter by their assigned ships
     if current_user.role == UserRole.VESSEL:
-        # Get their assigned IMOs
         user_vessel_imos = [v.imo for v in current_user.vessels]
-        
-        if user_vessel_imos:
-            query = query.where(Defect.vessel_imo.in_(user_vessel_imos))
-        else:
-            # If crew has no ship, they see nothing
+        if not user_vessel_imos:
             return []
+        query = query.where(Defect.vessel_imo.in_(user_vessel_imos))
     
-    # 2. Logic for Shore/Admin (Can filter by specific ship via Dropdown)
+    # 2. If user is SHORE/ADMIN: Allow global view or specific ship filter
     elif vessel_imo:
         query = query.where(Defect.vessel_imo == vessel_imo)
-    
-    # 3. If Shore/Admin and no filter selected -> Return ALL defects (Global View)
-    
+
     result = await db.execute(query)
-    return result.scalars().all()
+    defects = result.scalars().all()
+    
+    # Populate vessel_name from the joined vessel relationship
+    for defect in defects:
+        if defect.vessel:
+            defect.vessel_name = defect.vessel.name
+        else:
+            defect.vessel_name = None  # Fallback if vessel not found
+    
+    return defects
 
 # --- SAS GENERATION ---
 @router.get("/sas")
@@ -67,24 +72,27 @@ async def create_defect(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+    # 1. Idempotency Check
     existing = await db.get(Defect, defect_in.id)
-    if existing:
-        return existing
+    if existing: return existing
 
-    # Assign to the first vessel the user belongs to (Safe default)
-    # Or use the specific vessel if passed from UI context
-    user_vessel_imo = current_user.vessels[0].imo if current_user.vessels else "9832913"
+    # 2. Security Check: Ensure Vessel user belongs to the ship they are reporting for
+    if current_user.role == UserRole.VESSEL:
+        authorized_imos = [v.imo for v in current_user.vessels]
+        if defect_in.vessel_imo not in authorized_imos:
+            raise HTTPException(status_code=403, detail="Not authorized for this vessel")
 
+    # 3. Map to Model
     new_defect = Defect(
         id=defect_in.id,
-        vessel_imo=user_vessel_imo,
+        vessel_imo=defect_in.vessel_imo, # Now dynamic from UI
         reported_by_id=current_user.id,
         title=defect_in.equipment,           
         equipment_name=defect_in.equipment,  
         description=defect_in.description,
         ships_remarks=defect_in.remarks,     
         priority=defect_in.priority.upper(),
-        status=defect_in.status.upper(),     
+        status=defect_in.status.upper(),
         responsibility=defect_in.responsibility,
         office_support_required=True if "Yes" in defect_in.officeSupport else False,
         pr_number=defect_in.prNumber,

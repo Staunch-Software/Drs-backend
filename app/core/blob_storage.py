@@ -1,7 +1,7 @@
 # app/core/blob_storage.py
 import logging
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from urllib.parse import unquote
 from azure.storage.blob import BlobServiceClient, generate_blob_sas, BlobSasPermissions
 from app.core.config import settings
@@ -22,13 +22,16 @@ def generate_write_sas_url(blob_name: str):
     """Generates a URL that allows the UI to UPLOAD (Write/Create)."""
     info = get_blob_info()
     
+    now = datetime.now(timezone.utc)
+
     sas_token = generate_blob_sas(
         account_name=info["account_name"],
         account_key=info["account_key"],
         container_name=info["container"],
         blob_name=blob_name,
-        permission=BlobSasPermissions(read=True, write=True, create=True),
-        expiry=datetime.utcnow() + timedelta(minutes=30)
+        permission=BlobSasPermissions(read=True, write=True, create=True, list=True),
+        start=now - timedelta(minutes=15),
+        expiry=now + timedelta(hours=1)
     )
     
     # Construct the full URL the UI will use for PUT

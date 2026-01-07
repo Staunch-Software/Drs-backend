@@ -7,6 +7,7 @@ from app.models.enums import DefectPriority, DefectStatus
 # Input Schema: Matches the React formData keys exactly
 class DefectCreate(BaseModel):
     id: UUID
+    vessel_imo: str
     date: Optional[str] = None
     equipment: str
     description: str

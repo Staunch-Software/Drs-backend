@@ -21,6 +21,7 @@ async def get_current_user(
     Validates the JWT Token and retrieves the User from the Database.
     """
     try:
+        print(f"DEBUG: Received Token: {token[:10]}...")
         # 1. Decode the Token
         payload = jwt.decode(
             token, 
@@ -30,14 +31,17 @@ async def get_current_user(
         
         # 2. Extract User ID ("sub" holds the ID)
         token_data = payload.get("sub")
-        
+        print(f"DEBUG: Decoded Token Data (sub): {token_data}")
+
         if token_data is None:
+            print("DEBUG: Token is valid but 'sub' field is missing!")
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Could not validate credentials",
             )
-            
-    except (JWTError, ValidationError):
+
+    except (JWTError, ValidationError) as e:
+        print(f"DEBUG: JWT Decode Error: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Could not validate credentials",
@@ -49,10 +53,12 @@ async def get_current_user(
     user = result.scalars().first()
 
     if not user:
+        print(f"DEBUG: User ID {token_data} not found in database!")
         raise HTTPException(status_code=404, detail="User not found")
     
     if not user.is_active:
         raise HTTPException(status_code=400, detail="Inactive user")
 
     # 4. Return the Real Database User Object
+    print(f"DEBUG: Successfully authenticated user: {user.email}")
     return user
