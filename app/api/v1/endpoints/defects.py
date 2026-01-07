@@ -138,7 +138,8 @@ async def create_thread(
         defect_id=thread_in.defect_id,
         user_id=current_user.id,
         author_role=thread_in.author, 
-        body=thread_in.body
+        body=thread_in.body,
+        tagged_user_ids=thread_in.tagged_user_ids  # <-- ADD THIS
     )
     
     db.add(new_thread)
@@ -178,14 +179,34 @@ async def get_defect_threads(
     db: AsyncSession = Depends(get_db)
 ):
     query = select(Thread).where(Thread.defect_id == defect_id)\
-            .options(selectinload(Thread.attachments))\
+            .options(selectinload(Thread.attachments), selectinload(Thread.user))\
             .order_by(Thread.created_at.asc())
-    
+
     result = await db.execute(query)
     threads = result.scalars().all()
-    
+
     for thread in threads:
+        thread.author_role = thread.user.full_name  # Override with full_name
         for att in thread.attachments:
             att.blob_path = generate_read_sas_url(att.blob_path)
             
     return threads
+
+# --- GET VESSEL USERS ---
+@router.get("/{defect_id}/vessel-users", response_model=list[dict])
+async def get_vessel_users_for_defect(
+    defect_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    # Get defect to find vessel
+    defect = await db.get(Defect, defect_id)
+    if not defect:
+        raise HTTPException(status_code=404, detail="Defect not found")
+    
+    # Get users assigned to this vessel
+    query = select(User).join(User.vessels).where(Vessel.imo == defect.vessel_imo)
+    result = await db.execute(query)
+    users = result.scalars().all()
+    
+    return [{"id": str(u.id), "name": u.full_name} for u in users]

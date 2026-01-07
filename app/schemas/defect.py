@@ -24,6 +24,7 @@ class DefectCreate(BaseModel):
 class DefectResponse(BaseModel):
     id: UUID
     vessel_imo: str
+    vessel_name: Optional[str] = None
     reported_by_id: UUID
     
     # Include both original and new fields for the response
@@ -66,13 +67,16 @@ class ThreadCreate(BaseModel):
     defect_id: UUID
     author: str
     body: str
+    tagged_user_ids: List[str] = []
 
 class ThreadResponse(BaseModel):
     id: UUID
     defect_id: UUID
+    user_id: UUID  # ADD THIS LINE
     # Map 'author_role' from DB to 'author' in JSON
     author: str = Field(validation_alias="author_role") 
     body: str
+    tagged_user_ids: List[str] = []
     created_at: datetime
     attachments: List[AttachmentResponse] = []
     

@@ -5,6 +5,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.core.database import Base
 from app.models.enums import DefectPriority, DefectStatus
+from sqlalchemy.dialects.postgresql import ARRAY
 
 class Defect(Base):
     __tablename__ = "defects"
@@ -46,11 +47,13 @@ class Thread(Base):
     # Keep this for the "Display Name" (e.g., "Chief Engineer")
     author_role = Column(String, nullable=False) 
     body = Column(Text, nullable=False)
+    tagged_user_ids = Column(ARRAY(String), default=list)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     # Relationships
     defect = relationship("Defect", backref="threads")
     attachments = relationship("Attachment", back_populates="thread")
+    user = relationship("User", backref="threads")
 
 class Attachment(Base):
     __tablename__ = "attachments"
