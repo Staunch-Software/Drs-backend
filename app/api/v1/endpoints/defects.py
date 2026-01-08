@@ -9,7 +9,7 @@ from sqlalchemy.orm import selectinload
 from app.core.database import get_db
 from app.models.defect import Defect, Thread, Attachment
 from app.models.user import User
-from app.models.enums import UserRole
+from app.models.enums import UserRole, DefectStatus
 from app.models.vessel import Vessel
 from app.schemas.defect import (
     DefectCreate, 
@@ -18,7 +18,8 @@ from app.schemas.defect import (
     ThreadCreate, 
     ThreadResponse, 
     AttachmentResponse,
-    AttachmentBase
+    AttachmentBase,
+    DefectUpdate,
 )
 from app.core.blob_storage import generate_write_sas_url, generate_read_sas_url
 from app.api.deps import get_current_user 
@@ -252,6 +253,8 @@ async def close_defect(
     current_user: User = Depends(get_current_user)
 ):
     defect = await db.get(Defect, defect_id)
+    if not defect:
+        raise HTTPException(status_code=404, detail="Defect not found")
     defect.status = DefectStatus.CLOSED
     defect.closed_at = datetime.datetime.now()
     defect.closed_by_id = current_user.id # Record who closed it
