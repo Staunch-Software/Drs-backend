@@ -29,15 +29,24 @@ class Defect(Base):
     closed_at = Column(DateTime(timezone=True), nullable=True)
     closed_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
     is_deleted = Column(Boolean, default=False, index=True)
-    
+
     responsibility = Column(String, nullable=True)
     json_backup_path = Column(String, nullable=True) # Link to Azure JSON
     date_identified = Column(DateTime, nullable=True) # To store the 'date' from UI
 
     # Relationships
     vessel = relationship("Vessel", back_populates="defects")
-    reporter = relationship("User", back_populates="reported_defects")
-    closed_by = relationship("User", foreign_keys=[closed_by_id])
+    reporter = relationship(
+    "User", 
+        back_populates="reported_defects", 
+        foreign_keys=[reported_by_id] 
+    )
+
+    # Explicitly tell SQLAlchemy to use closed_by_id for this link
+    closed_by = relationship(
+        "User", 
+        foreign_keys=[closed_by_id]
+    )
 
 class Thread(Base):
     __tablename__ = "threads"
@@ -56,7 +65,7 @@ class Thread(Base):
     # Relationships
     defect = relationship("Defect", backref="threads")
     attachments = relationship("Attachment", back_populates="thread")
-    user = relationship("User", backref="threads")
+    user = relationship("User", backref="threads", foreign_keys=[user_id])
 
 class Attachment(Base):
     __tablename__ = "attachments"

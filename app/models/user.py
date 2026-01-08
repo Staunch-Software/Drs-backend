@@ -31,4 +31,8 @@ class User(Base):
         lazy="selectin"  # HIGH EFFICIENCY: Loads vessels instantly when fetching user
     )
 
-    reported_defects = relationship("Defect", back_populates="reporter")
+    reported_defects = relationship(
+        "Defect", 
+        back_populates="reporter",
+        foreign_keys="[Defect.reported_by_id]" # <--- Explicitly link to the reporter column
+    )
