@@ -13,6 +13,7 @@ from app.models.enums import UserRole
 from app.models.vessel import Vessel
 from app.schemas.defect import (
     DefectCreate, 
+    DefectUpdate, 
     DefectResponse, 
     ThreadCreate, 
     ThreadResponse, 
@@ -108,16 +109,20 @@ async def create_defect(
     await db.commit()
     await db.refresh(new_defect)
 
+    priority_str = new_defect.priority.value if hasattr(new_defect.priority, "value") else str(new_defect.priority)
+    status_str = new_defect.status.value if hasattr(new_defect.status, "value") else str(new_defect.status)
+
+
     email_data = {
         "vessel_imo": new_defect.vessel_imo,
         "title": new_defect.title,
         "equipment_name": new_defect.equipment_name,
-        "priority": new_defect.priority,
-        "status": new_defect.status,
+        "priority": priority_str, 
+        "status": status_str,     
         "description": new_defect.description
     }
 
-    background_tasks.add_task(send_defect_email, email_data)
+    background_tasks.add_task(send_defect_email, email_data, "CREATED")
     
     return new_defect
 

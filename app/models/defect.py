@@ -36,7 +36,13 @@ class Defect(Base):
 
     # Relationships
     vessel = relationship("Vessel", back_populates="defects")
-    reporter = relationship("User", back_populates="reported_defects")
+    # reporter = relationship("User", back_populates="reported_defects")
+    reporter = relationship(
+    "User",
+    back_populates="reported_defects",
+    foreign_keys=[reported_by_id]
+)
+
     closed_by = relationship("User", foreign_keys=[closed_by_id])
 
 class Thread(Base):
