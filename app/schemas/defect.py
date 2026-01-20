@@ -5,6 +5,15 @@ from uuid import UUID
 from app.models.enums import DefectPriority, DefectStatus
 
 # Input Schema: Matches the React formData keys exactly
+
+class VesselUserResponse(BaseModel):
+    id: UUID
+    full_name: str
+    job_title: Optional[str] = None
+    
+    class Config:
+        from_attributes = True
+
 class DefectCreate(BaseModel):
     id: UUID
     vessel_imo: str
@@ -19,7 +28,12 @@ class DefectCreate(BaseModel):
     prNumber: Optional[str] = None
     prStatus: Optional[str] = None
     json_backup_path: Optional[str] = None
+    target_close_date: Optional[str] = None 
 
+class DefectCloseRequest(BaseModel):
+    closure_remarks: str
+    closure_image_before: str
+    closure_image_after: str
 # Output Schema: What the Shore UI sees
 class DefectResponse(BaseModel):
     id: UUID
@@ -42,9 +56,13 @@ class DefectResponse(BaseModel):
     responsibility: Optional[str] = None
     json_backup_path: Optional[str] = None
     date_identified: Optional[datetime] = None
+    target_close_date: Optional[datetime] = None 
     
     created_at: datetime
     updated_at: Optional[datetime] = None
+    closure_remarks: Optional[str] = None
+    closure_image_before: Optional[str] = None
+    closure_image_after: Optional[str] = None
     
     class Config:
         from_attributes = True
@@ -76,23 +94,25 @@ class AttachmentResponse(AttachmentBase):
 class ThreadCreate(BaseModel):
     id: UUID
     defect_id: UUID
-    author: str
+    # ✅ FIX: Remove 'alias' here so it accepts "author" from frontend JSON
+    author: str 
     body: str
     tagged_user_ids: List[str] = []
 
 class ThreadResponse(BaseModel):
     id: UUID
     defect_id: UUID
-    user_id: UUID  # ADD THIS LINE
-    # Map 'author_role' from DB to 'author' in JSON
-    author: str = Field(validation_alias="author_role") 
+    # Output alias is fine (DB 'author_role' -> JSON 'author')
+    author: str = Field(alias="author_role") 
     body: str
-    tagged_user_ids: List[str] = []
     created_at: datetime
-    attachments: List[AttachmentResponse] = []
+    user_id: UUID
+    is_system_message: bool = False
+    tagged_user_ids: List[str] = []
     
-    # Pydantic v2 configuration
-    model_config = ConfigDict(
-        from_attributes=True, 
-        populate_by_name=True
-    )
+    # Use forward reference string or explicit list if AttachmentResponse is defined
+    attachments: List['AttachmentResponse'] = [] 
+
+    class Config:
+        from_attributes = True
+        populate_by_name = True

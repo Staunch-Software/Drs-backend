@@ -1,8 +1,8 @@
 import enum
 
-# --- USER ROLES (SIMPLIFIED) ---
+# --- USER ROLES ---
 class UserRole(str, enum.Enum):
-    ADMIN = "ADMIN"  # Can create users, delete ships
+    ADMIN = "ADMIN"
     SHORE = "SHORE"   
     VESSEL= "VESSEL"
 
@@ -15,6 +15,7 @@ class VesselType(str, enum.Enum):
     GENERAL_CARGO = "GENERAL_CARGO"
 
 # --- DEFECT PRIORITIES ---
+# ✅ Added MEDIUM, ensured all are UPPERCASE
 class DefectPriority(str, enum.Enum):
     NORMAL = "NORMAL"
     HIGH = "HIGH"

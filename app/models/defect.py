@@ -30,9 +30,14 @@ class Defect(Base):
     closed_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
     is_deleted = Column(Boolean, default=False, index=True)
 
+    closure_remarks = Column(Text, nullable=True)
+    closure_image_before = Column(String, nullable=True) # Azure Blob Path
+    closure_image_after = Column(String, nullable=True)  # Azure Blob Path
+
     responsibility = Column(String, nullable=True)
     json_backup_path = Column(String, nullable=True) # Link to Azure JSON
     date_identified = Column(DateTime, nullable=True) # To store the 'date' from UI
+    target_close_date = Column(DateTime, nullable=True) 
 
     # Relationships
     vessel = relationship("Vessel", back_populates="defects")
@@ -61,6 +66,8 @@ class Thread(Base):
     body = Column(Text, nullable=False)
     tagged_user_ids = Column(ARRAY(String), default=list)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    is_system_message = Column(Boolean, default=False) 
 
     # Relationships
     defect = relationship("Defect", backref="threads")

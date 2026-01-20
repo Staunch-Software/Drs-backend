@@ -6,6 +6,7 @@ from app.core.database import get_db
 from app.models.vessel import Vessel
 from app.schemas.vessel import VesselCreate, VesselResponse
 import traceback
+from app.schemas.defect import VesselUserResponse
 
 router = APIRouter()
 
@@ -31,6 +32,21 @@ async def read_vessels(db: AsyncSession = Depends(get_db)):
         return response_data
     except Exception as e:
         traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/{imo_number}/users", response_model=List[VesselUserResponse])
+async def get_users_by_vessel(
+    imo_number: str,
+    db: AsyncSession = Depends(get_db)
+):
+    """Fetch all users assigned to a specific vessel IMO"""
+    try:
+        # Join User -> user_vessel_link -> Vessel
+        stmt = select(User).join(User.vessels).where(Vessel.imo == imo_number)
+        result = await db.execute(stmt)
+        users = result.scalars().all()
+        return users
+    except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 # 2. CREATE VESSEL
