@@ -248,7 +248,7 @@ async def get_vessel_users_for_defect(defect_id: UUID, db: AsyncSession = Depend
     users = result.scalars().all()
     
     # Return matches schema: {id: str, name: str}
-    return [{"id": str(u.id), "name": u.full_name} for u in users]
+    return [{"id": str(u.id), "full_name": u.full_name} for u in users]
 
 # --- UPDATE DEFECT ---
 @router.patch("/{defect_id}", response_model=DefectResponse)
@@ -278,6 +278,10 @@ async def update_defect(
             defect.office_support_required = True if "Yes" in value else False
         elif field == "remarks":
             defect.ships_remarks = value
+        elif field == "prNumber":
+            defect.pr_number = value
+        elif field == "prStatus":
+            defect.pr_status = value
         else:
             setattr(defect, field, value)
             
