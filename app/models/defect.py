@@ -1,93 +1,123 @@
-import uuid
-from sqlalchemy import Column, String, Text, ForeignKey, DateTime, Enum, Boolean, Integer
+from sqlalchemy import Column, String, Integer, Text, DateTime, Boolean, ForeignKey, Enum as SQLEnum, ARRAY
+from sqlalchemy.dialects.postgresql import ENUM  # ✅ Add this import
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
+import uuid
 from app.core.database import Base
-from app.models.enums import DefectPriority, DefectStatus
-from sqlalchemy.dialects.postgresql import ARRAY
+from app.models.enums import DefectPriority, DefectStatus, DefectSource
 
 class Defect(Base):
     __tablename__ = "defects"
-
-    id = Column(UUID(as_uuid=True), primary_key=True) 
     
-    vessel_imo = Column(String(7), ForeignKey("vessels.imo", ondelete="CASCADE"), nullable=False, index=True)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    vessel_imo = Column(String, ForeignKey("vessels.imo"), nullable=False, index=True)
     reported_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     
+    # Core defect information
     title = Column(String, nullable=False)
     equipment_name = Column(String, nullable=False)
     description = Column(Text, nullable=False)
-    ships_remarks = Column(Text, nullable=True)
-    priority = Column(Enum(DefectPriority), default=DefectPriority.NORMAL, index=True)
-    status = Column(Enum(DefectStatus), default=DefectStatus.OPEN, index=True)
-    office_support_required = Column(Boolean, default=False)
-    pr_number = Column(String, nullable=True)
-    pr_status = Column(String, nullable=True)
+    
+    # ✅ FIXED: Defect Source - Use values instead of enum names
+    defect_source = Column(
+        ENUM(
+            'Office - Technical',
+            'Office - Operation',
+            'Internal Audit',
+            'External Audit',
+            'Third Party - RS',
+            'Third Party - PnI',
+            'Third Party - Charterer',
+            'Third Party - Other',
+            "Owner's Inspection",
+            name='defectsource',
+            create_type=False  # Don't recreate the type
+        ),
+        nullable=False,
+        server_default='Internal Audit'  # Database default
+    )    
+    # Status and priority
+    priority = Column(SQLEnum(DefectPriority, name="defectpriority"), nullable=False)
+    status = Column(SQLEnum(DefectStatus, name="defectstatus"), nullable=False)
+    responsibility = Column(String, nullable=True)
+    
+    # Dates
+    date_identified = Column(DateTime(timezone=True), nullable=True)
+    target_close_date = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    
+    # Closure information
     closed_at = Column(DateTime(timezone=True), nullable=True)
     closed_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
-    is_deleted = Column(Boolean, default=False, index=True)
-
     closure_remarks = Column(Text, nullable=True)
-    closure_image_before = Column(String, nullable=True) # Azure Blob Path
-    closure_image_after = Column(String, nullable=True)  # Azure Blob Path
-
-    responsibility = Column(String, nullable=True)
-    json_backup_path = Column(String, nullable=True) # Link to Azure JSON
-    date_identified = Column(DateTime, nullable=True) # To store the 'date' from UI
-    target_close_date = Column(DateTime, nullable=True) 
-
+    closure_image_before = Column(String, nullable=True)
+    closure_image_after = Column(String, nullable=True)
+    
+    # Storage
+    json_backup_path = Column(String, nullable=True)
+    is_deleted = Column(Boolean, default=False, nullable=False)
+    
+    # ❌ REMOVED: ships_remarks, office_support_required, pr_number, pr_status
+    
     # Relationships
     vessel = relationship("Vessel", back_populates="defects")
     reporter = relationship(
-    "User", 
-        back_populates="reported_defects", 
-        foreign_keys=[reported_by_id] 
-    )
+    "User",
+    foreign_keys=[reported_by_id],
+    back_populates="reported_defects"
+)
 
-    # Explicitly tell SQLAlchemy to use closed_by_id for this link
-    closed_by = relationship(
-        "User", 
-        foreign_keys=[closed_by_id]
-    )
+    closed_by = relationship("User", foreign_keys=[closed_by_id])
+    threads = relationship("Thread", back_populates="defect", cascade="all, delete-orphan")
+    
+    # ✅ NEW: One-to-Many relationship with PR entries
+    pr_entries = relationship("PrEntry", back_populates="defect", cascade="all, delete-orphan")
+
 
 class Thread(Base):
     __tablename__ = "threads"
-    id = Column(UUID(as_uuid=True), primary_key=True)
-    defect_id = Column(UUID(as_uuid=True), ForeignKey("defects.id"), nullable=False)
     
-    # ADD THIS: Link to the actual user account
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    defect_id = Column(UUID(as_uuid=True), ForeignKey("defects.id", ondelete="CASCADE"), nullable=False, index=True)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
-    
-    # Keep this for the "Display Name" (e.g., "Chief Engineer")
-    author_role = Column(String, nullable=False) 
+    author_role = Column(String, nullable=False)
     body = Column(Text, nullable=False)
+    is_system_message = Column(Boolean, default=False)
     tagged_user_ids = Column(ARRAY(String), default=list)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    
+    defect = relationship("Defect", back_populates="threads")
+    user = relationship("User", foreign_keys=[user_id])
+    attachments = relationship("Attachment", back_populates="thread", cascade="all, delete-orphan")
 
-    is_system_message = Column(Boolean, default=False) 
-
-    # Relationships
-    defect = relationship("Defect", backref="threads")
-    attachments = relationship("Attachment", back_populates="thread")
-    user = relationship("User", backref="threads", foreign_keys=[user_id])
 
 class Attachment(Base):
     __tablename__ = "attachments"
-
-    id = Column(UUID(as_uuid=True), primary_key=True) # Client-generated
-    thread_id = Column(UUID(as_uuid=True), ForeignKey("threads.id"), nullable=False)
     
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    thread_id = Column(UUID(as_uuid=True), ForeignKey("threads.id", ondelete="CASCADE"), nullable=False, index=True)
     file_name = Column(String, nullable=False)
     file_size = Column(Integer, nullable=True)
     content_type = Column(String, nullable=True)
-    
-    # The path in Azure Blob Storage (Module 3)
-    blob_path = Column(String, nullable=False) 
-    
+    blob_path = Column(String, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-
-    # Relationships
+    
     thread = relationship("Thread", back_populates="attachments")
+
+
+# ✅ NEW MODEL: PR Entries
+class PrEntry(Base):
+    __tablename__ = "pr_entries"
+    
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    defect_id = Column(UUID(as_uuid=True), ForeignKey("defects.id", ondelete="CASCADE"), nullable=False, index=True)
+    pr_number = Column(String, nullable=False)
+    pr_description = Column(String, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    created_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    
+    # Relationships
+    defect = relationship("Defect", back_populates="pr_entries")
+    creator = relationship("User", foreign_keys=[created_by_id])
