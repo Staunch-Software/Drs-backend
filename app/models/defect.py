@@ -41,6 +41,14 @@ class Defect(Base):
     priority = Column(SQLEnum(DefectPriority, name="defectpriority"), nullable=False)
     status = Column(SQLEnum(DefectStatus, name="defectstatus"), nullable=False)
     responsibility = Column(String, nullable=True)
+    pr_status = Column(String, nullable=True, server_default='Not Set')
+    # ✅ NEW: Image requirement flags (set by shore side)
+    before_image_required = Column(Boolean, default=False, nullable=False)
+    after_image_required = Column(Boolean, default=False, nullable=False)
+    
+    # ✅ NEW: Before/After images uploaded during creation or update
+    before_image_path = Column(String, nullable=True)
+    after_image_path = Column(String, nullable=True)
     
     # Dates
     date_identified = Column(DateTime(timezone=True), nullable=True)

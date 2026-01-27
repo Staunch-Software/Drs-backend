@@ -44,8 +44,13 @@ class DefectCreate(BaseModel):
     
     # ✅ NEW: Defect Source (replaces officeSupport)
     defect_source: str
+    pr_status: Optional[str] = 'Not Set' 
+    before_image_required: Optional[bool] = False
+    after_image_required: Optional[bool] = False
+    before_image_path: Optional[str] = None
+    after_image_path: Optional[str] = None
     
-    # ❌ REMOVED: remarks, officeSupport, prNumber, prStatus
+  
 
 class DefectCloseRequest(BaseModel):
     closure_remarks: str
@@ -74,9 +79,14 @@ class DefectResponse(BaseModel):
     
     # Other fields
     responsibility: Optional[str] = None
+    pr_status: Optional[str] = 'Not Set'
     json_backup_path: Optional[str] = None
     date_identified: Optional[datetime] = None
     target_close_date: Optional[datetime] = None
+    before_image_required: bool = False
+    after_image_required: bool = False
+    before_image_path: Optional[str] = None
+    after_image_path: Optional[str] = None
     
     created_at: datetime
     updated_at: Optional[datetime] = None
@@ -91,14 +101,21 @@ class DefectResponse(BaseModel):
 
 # ✅ UPDATED: Defect Update Schema
 class DefectUpdate(BaseModel):
-    equipment: Optional[str] = None
+    equipment_name: Optional[str] = None
     description: Optional[str] = None
     priority: Optional[str] = None
     status: Optional[str] = None
     responsibility: Optional[str] = None
-    defect_source: Optional[str] = None  # ✅ NEW
+    defect_source: Optional[str] = None
+    pr_status: Optional[str] = None
+    target_close_date: Optional[str] = None
     
-    # ❌ REMOVED: remarks, officeSupport, prNumber, prStatus
+    # ✅ NEW: Image requirement flags and paths
+    before_image_required: Optional[bool] = None
+    after_image_required: Optional[bool] = None
+    before_image_path: Optional[str] = None
+    after_image_path: Optional[str] = None
+
 
 class AttachmentBase(BaseModel):
     id: UUID
